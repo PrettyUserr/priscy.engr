@@ -4,6 +4,7 @@ import * as THREE from "three";
 function createOrganicForm() {
   const group = new THREE.Group();
 
+  // Stem
   const stemGeometry = new THREE.CylinderGeometry(0.025, 0.07, 2.5, 8);
 
   const stemMaterial = new THREE.MeshStandardMaterial({
@@ -14,9 +15,11 @@ function createOrganicForm() {
   const stem = new THREE.Mesh(stemGeometry, stemMaterial);
 
   stem.position.y = 1.25;
+  stem.castShadow = true;
 
   group.add(stem);
 
+  // Leaves
   for (let i = 0; i < 4; i++) {
     const leafGeometry = new THREE.SphereGeometry(0.35, 10, 6);
 
@@ -35,6 +38,8 @@ function createOrganicForm() {
 
     leaf.rotation.z = side * THREE.MathUtils.degToRad(25);
 
+    leaf.castShadow = true;
+
     group.add(leaf);
   }
 
@@ -47,9 +52,17 @@ function LivingWorld() {
   useEffect(() => {
     const canvas = canvasRef.current;
 
+    // -------------------------
+    // SCENE
+    // -------------------------
+
     const scene = new THREE.Scene();
 
     scene.fog = new THREE.FogExp2(0x07100c, 0.035);
+
+    // -------------------------
+    // CAMERA
+    // -------------------------
 
     const camera = new THREE.PerspectiveCamera(
       55,
@@ -59,6 +72,10 @@ function LivingWorld() {
     );
 
     camera.position.set(0, 1.8, 10);
+
+    // -------------------------
+    // RENDERER
+    // -------------------------
 
     const renderer = new THREE.WebGLRenderer({
       canvas,
@@ -70,19 +87,9 @@ function LivingWorld() {
 
     renderer.setSize(window.innerWidth, window.innerHeight);
 
-    // -------------------------
-    // LIGHT
-    // -------------------------
+    renderer.shadowMap.enabled = true;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
-
-    scene.add(ambientLight);
-
-    const keyLight = new THREE.DirectionalLight(0xd8ffe5, 1.5);
-
-    keyLight.position.set(4, 8, 5);
-
-    scene.add(keyLight);
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     // -------------------------
     // WORLD
@@ -91,6 +98,34 @@ function LivingWorld() {
     const world = new THREE.Group();
 
     scene.add(world);
+
+    // -------------------------
+    // CINEMATIC LIGHTING
+    // -------------------------
+
+    const ambientLight = new THREE.AmbientLight(0xb7cbbd, 0.22);
+
+    scene.add(ambientLight);
+
+    const moonLight = new THREE.DirectionalLight(0xd9e8ff, 1.1);
+
+    moonLight.position.set(-6, 10, 4);
+
+    moonLight.castShadow = true;
+
+    scene.add(moonLight);
+
+    const worldGlow = new THREE.PointLight(0x8fd8a5, 2.2, 12);
+
+    worldGlow.position.set(0, 2, -6);
+
+    scene.add(worldGlow);
+
+    const horizonGlow = new THREE.PointLight(0x4b8060, 1.5, 25);
+
+    horizonGlow.position.set(0, 3, -16);
+
+    scene.add(horizonGlow);
 
     // -------------------------
     // TERRAIN
@@ -109,6 +144,8 @@ function LivingWorld() {
 
     terrain.position.y = -1.5;
 
+    terrain.receiveShadow = true;
+
     world.add(terrain);
 
     // -------------------------
@@ -118,7 +155,7 @@ function LivingWorld() {
     const horizonGeometry = new THREE.SphereGeometry(35, 32, 32);
 
     const horizonMaterial = new THREE.MeshBasicMaterial({
-      color: 0x162c1d,
+      color: 0x102218,
       side: THREE.BackSide,
     });
 
@@ -129,7 +166,7 @@ function LivingWorld() {
     world.add(horizon);
 
     // -------------------------
-    // FLOATING ORGANIC OBJECTS
+    // FLOATING OBJECTS
     // -------------------------
 
     const objects = [];
@@ -156,6 +193,8 @@ function LivingWorld() {
 
       mesh.rotation.set(Math.random(), Math.random(), Math.random());
 
+      mesh.castShadow = true;
+
       world.add(mesh);
 
       objects.push({
@@ -165,6 +204,7 @@ function LivingWorld() {
         offset: Math.random() * Math.PI * 2,
       });
     }
+
     // -------------------------
     // ORGANIC ENVIRONMENT
     // -------------------------
@@ -196,7 +236,7 @@ function LivingWorld() {
     }
 
     // -------------------------
-    // ATMOSPHERE
+    // ATMOSPHERIC PARTICLES
     // -------------------------
 
     const particleCount = 1200;
@@ -256,6 +296,8 @@ function LivingWorld() {
       camera.updateProjectionMatrix();
 
       renderer.setSize(window.innerWidth, window.innerHeight);
+
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     };
 
     window.addEventListener("resize", handleResize);
@@ -281,30 +323,38 @@ function LivingWorld() {
       camera.position.x += (targetCameraX - camera.position.x) * 0.02;
 
       camera.position.y += (targetCameraY - camera.position.y) * 0.02;
-      // Floating movement
+
+      camera.lookAt(0, 1, -7);
+
+      // Floating objects
       objects.forEach((object) => {
-        object.mesh.position.y =
-          object.mesh.position.y +
+        object.mesh.position.y +=
           Math.sin(time * object.speed + object.offset) * 0.001;
 
         object.mesh.rotation.x += object.rotationSpeed;
 
         object.mesh.rotation.y += object.rotationSpeed;
       });
-      // Organic environment movement
+
+      // Organic plants
       organicForms.forEach((plant) => {
         const sway = Math.sin(time * plant.speed + plant.offset) * 0.08;
 
         plant.mesh.rotation.z = sway;
       });
 
-      // Atmospheric movement
+      // Atmospheric particles
       particles.rotation.y = time * 0.006;
 
       particles.position.y = Math.sin(time * 0.2) * 0.15;
 
+      // Distant horizon
       horizon.rotation.y = Math.sin(time * 0.03) * 0.02;
 
+      // Breathing world light
+      worldGlow.intensity = 1.8 + Math.sin(time * 0.8) * 0.35;
+
+      // Render
       renderer.render(scene, camera);
     };
 
@@ -323,6 +373,9 @@ function LivingWorld() {
 
       terrainGeometry.dispose();
       terrainMaterial.dispose();
+
+      horizonGeometry.dispose();
+      horizonMaterial.dispose();
 
       particleGeometry.dispose();
       particleMaterial.dispose();
