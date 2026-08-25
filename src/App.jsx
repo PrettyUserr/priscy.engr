@@ -1,10 +1,15 @@
+import LivingWorld from "./components/scene/LivingWorld";
 import "./App.css";
 
 function App() {
   return (
     <main className="app">
-      <h1>PRTUSR</h1>
-      <p>Initializing system...</p>
+      <LivingWorld />
+
+      <div className="intro">
+        <p>PRTUSR</p>
+        <span>Initializing system...</span>
+      </div>
     </main>
   );
 }
