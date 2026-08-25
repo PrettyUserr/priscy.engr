@@ -277,6 +277,10 @@ function LivingWorld() {
       x: 0,
       y: 0,
     };
+    const scroll = {
+      current: 0,
+      target: 0,
+    };
 
     const handlePointerMove = (event) => {
       pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -285,6 +289,13 @@ function LivingWorld() {
     };
 
     window.addEventListener("pointermove", handlePointerMove);
+
+    const handleScroll = () => {
+      scroll.target =
+        window.scrollY / (document.body.scrollHeight - window.innerHeight);
+    };
+
+    window.addEventListener("scroll", handleScroll);
 
     // -------------------------
     // RESIZE
@@ -314,6 +325,7 @@ function LivingWorld() {
       animationFrame = requestAnimationFrame(animate);
 
       const time = clock.getElapsedTime();
+      scroll.current += (scroll.target - scroll.current) * 0.04;
 
       // Camera movement
       const targetCameraX = pointer.x * 1.5;
@@ -324,12 +336,18 @@ function LivingWorld() {
 
       camera.position.y += (targetCameraY - camera.position.y) * 0.02;
 
-      camera.lookAt(0, 1, -7);
+      camera.lookAt(0, 1, -7 - scroll.current * 8);
+
+      camera.position.z = 10 - scroll.current * 14;
 
       // Floating objects
       objects.forEach((object) => {
         object.mesh.position.y +=
           Math.sin(time * object.speed + object.offset) * 0.001;
+
+        object.mesh.position.x += pointer.x * 0.0003;
+
+        object.mesh.position.z += pointer.y * 0.0003;
 
         object.mesh.rotation.x += object.rotationSpeed;
 
@@ -338,11 +356,12 @@ function LivingWorld() {
 
       // Organic plants
       organicForms.forEach((plant) => {
-        const sway = Math.sin(time * plant.speed + plant.offset) * 0.08;
+        const naturalSway = Math.sin(time * plant.speed + plant.offset) * 0.08;
 
-        plant.mesh.rotation.z = sway;
+        const mouseSway = pointer.x * 0.08;
+
+        plant.mesh.rotation.z = naturalSway + mouseSway;
       });
-
       // Atmospheric particles
       particles.rotation.y = time * 0.006;
 
@@ -369,6 +388,7 @@ function LivingWorld() {
 
       window.removeEventListener("pointermove", handlePointerMove);
 
+      window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleResize);
 
       terrainGeometry.dispose();

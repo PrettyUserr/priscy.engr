@@ -10,6 +10,8 @@ function App() {
         <p>PRTUSR</p>
         <span>Initializing system...</span>
       </div>
+
+      <div className="scroll-space" />
     </main>
   );
 }
