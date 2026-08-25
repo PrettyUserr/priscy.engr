@@ -1,6 +1,46 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
+function createOrganicForm() {
+  const group = new THREE.Group();
+
+  const stemGeometry = new THREE.CylinderGeometry(0.025, 0.07, 2.5, 8);
+
+  const stemMaterial = new THREE.MeshStandardMaterial({
+    color: 0x294d32,
+    roughness: 0.9,
+  });
+
+  const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+
+  stem.position.y = 1.25;
+
+  group.add(stem);
+
+  for (let i = 0; i < 4; i++) {
+    const leafGeometry = new THREE.SphereGeometry(0.35, 10, 6);
+
+    const leafMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3b7048,
+      roughness: 0.85,
+    });
+
+    const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+
+    const side = i % 2 === 0 ? -1 : 1;
+
+    leaf.scale.set(1.4, 0.35, 0.7);
+
+    leaf.position.set(side * 0.35, 0.7 + i * 0.42, 0);
+
+    leaf.rotation.z = side * THREE.MathUtils.degToRad(25);
+
+    group.add(leaf);
+  }
+
+  return group;
+}
+
 function LivingWorld() {
   const canvasRef = useRef(null);
 
@@ -72,6 +112,23 @@ function LivingWorld() {
     world.add(terrain);
 
     // -------------------------
+    // DISTANT HORIZON
+    // -------------------------
+
+    const horizonGeometry = new THREE.SphereGeometry(35, 32, 32);
+
+    const horizonMaterial = new THREE.MeshBasicMaterial({
+      color: 0x162c1d,
+      side: THREE.BackSide,
+    });
+
+    const horizon = new THREE.Mesh(horizonGeometry, horizonMaterial);
+
+    horizon.position.set(0, 2, -15);
+
+    world.add(horizon);
+
+    // -------------------------
     // FLOATING ORGANIC OBJECTS
     // -------------------------
 
@@ -106,6 +163,35 @@ function LivingWorld() {
         speed: THREE.MathUtils.randFloat(0.2, 0.7),
         rotationSpeed: THREE.MathUtils.randFloat(0.001, 0.004),
         offset: Math.random() * Math.PI * 2,
+      });
+    }
+    // -------------------------
+    // ORGANIC ENVIRONMENT
+    // -------------------------
+
+    const organicForms = [];
+
+    for (let i = 0; i < 18; i++) {
+      const plant = createOrganicForm();
+
+      const scale = THREE.MathUtils.randFloat(0.5, 1.4);
+
+      plant.scale.setScalar(scale);
+
+      plant.position.set(
+        THREE.MathUtils.randFloatSpread(22),
+        -1.5,
+        THREE.MathUtils.randFloat(-18, -3),
+      );
+
+      plant.rotation.y = Math.random() * Math.PI * 2;
+
+      world.add(plant);
+
+      organicForms.push({
+        mesh: plant,
+        offset: Math.random() * Math.PI * 2,
+        speed: THREE.MathUtils.randFloat(0.4, 0.9),
       });
     }
 
@@ -188,12 +274,13 @@ function LivingWorld() {
       const time = clock.getElapsedTime();
 
       // Camera movement
-      camera.position.x += (pointer.x * 1.2 - camera.position.x) * 0.025;
+      const targetCameraX = pointer.x * 1.5;
 
-      camera.position.y += (1.8 + pointer.y * 0.7 - camera.position.y) * 0.025;
+      const targetCameraY = 1.8 + pointer.y * 0.8;
 
-      camera.lookAt(0, 1, -7);
+      camera.position.x += (targetCameraX - camera.position.x) * 0.02;
 
+      camera.position.y += (targetCameraY - camera.position.y) * 0.02;
       // Floating movement
       objects.forEach((object) => {
         object.mesh.position.y =
@@ -204,11 +291,19 @@ function LivingWorld() {
 
         object.mesh.rotation.y += object.rotationSpeed;
       });
+      // Organic environment movement
+      organicForms.forEach((plant) => {
+        const sway = Math.sin(time * plant.speed + plant.offset) * 0.08;
+
+        plant.mesh.rotation.z = sway;
+      });
 
       // Atmospheric movement
       particles.rotation.y = time * 0.006;
 
       particles.position.y = Math.sin(time * 0.2) * 0.15;
+
+      horizon.rotation.y = Math.sin(time * 0.03) * 0.02;
 
       renderer.render(scene, camera);
     };
